@@ -154,6 +154,8 @@ cp target/wasm32-wasip2/release/zed_nix_linters.wasm extension.wasm
 
 The bridge script lives at `scripts/nix-lint-lsp.py` and is compiled into the binary with `include_str!`, so there's no separate file to ship. Snippets are plain JSON — after editing them, run `python3 validate_snippets.py` to check prefixes, descriptions and duplicates.
 
+Build outputs are deliberately not committed: `extension.wasm`, `grammars/nix.wasm`, the `grammars/nix/` source checkout and `target/` are all gitignored, because Zed regenerates them from `extension.toml` (grammar included) on every dev rebuild and on registry publishes.
+
 When it's ready for the official registry, publishing is a small PR against [`zed-industries/extensions`](https://github.com/zed-industries/extensions): add this repo as a submodule and register the version in `extensions.toml`.
 
 ## Credits
