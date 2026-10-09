@@ -1,0 +1,132 @@
+{
+  "Nix Let": {
+    "prefix": "let",
+    "body": "let\n  ${1:name} = ${2:value};\nin\n$0",
+    "description": "let ... in expression"
+  },
+  "Nix Lambda": {
+    "prefix": "lambda",
+    "body": "${1:arg}: $0",
+    "description": "Anonymous function (x: x + 1)"
+  },
+  "Nix Function": {
+    "prefix": ["fn", "nix-func"],
+    "body": "{ ${1:args} }:\n$0",
+    "description": "Function taking an attribute set of arguments"
+  },
+  "Nix If Then Else": {
+    "prefix": "if",
+    "body": "if ${1:condition} then ${2:value} else ${3:value}",
+    "description": "Conditional expression"
+  },
+  "Nix With": {
+    "prefix": "with",
+    "body": "with ${1:set}; $0",
+    "description": "Bring an attribute set into scope"
+  },
+  "Nix Import": {
+    "prefix": "import",
+    "body": "import ${1:./path}",
+    "description": "Import and evaluate a Nix file"
+  },
+  "Nix Inherit": {
+    "prefix": "inherit",
+    "body": "inherit ${1:name}; $0",
+    "description": "Shorthand for name = name;"
+  },
+  "Nix Attribute Set": {
+    "prefix": "rec",
+    "body": "rec {\n  $0\n}",
+    "description": "Recursive attribute set"
+  },
+  "Nix Multiline String": {
+    "prefix": "mstr",
+    "body": "''\n  $0\n''",
+    "description": "Indented multi-line '' string"
+  },
+  "Nix mkIf": {
+    "prefix": "mkIf",
+    "body": "lib.mkIf ${1:condition} {\n  $0\n}",
+    "description": "Conditional attribute set (lib.mkIf)"
+  },
+  "Nix optionals": {
+    "prefix": "optionals",
+    "body": "lib.optionals ${1:condition} [ ${2:value} ]",
+    "description": "Conditionally include list items (lib.optionals)"
+  },
+  "Nix Module": {
+    "prefix": "module",
+    "body": "{ config, lib, pkgs, ... }:\n{\n  $0\n}",
+    "description": "NixOS / Home-Manager module skeleton"
+  },
+  "Nix mkOption": {
+    "prefix": "mkOption",
+    "body": "${1:name} = lib.mkOption {\n  type = lib.types.${2:str};\n  description = \"${3:Description of the option}\";\n  $0\n};",
+    "description": "Option declaration with type and description"
+  },
+  "Nix mkEnableOption": {
+    "prefix": "mkEnableOption",
+    "body": "lib.mkEnableOption \"${1:feature}\"; $0",
+    "description": "Boolean on/off option for a feature"
+  },
+  "Nix Service": {
+    "prefix": "service",
+    "body": "services.${1:foo}.enable = true; $0",
+    "description": "Enable a NixOS or Home-Manager service"
+  },
+  "Nix Program": {
+    "prefix": "program",
+    "body": "programs.${1:foo}.enable = true; $0",
+    "description": "Enable a programs.<name> module option"
+  },
+  "Nix System Packages": {
+    "prefix": "systemPackages",
+    "body": "environment.systemPackages = with pkgs; [\n  $0\n];",
+    "description": "Install packages system-wide (NixOS)"
+  },
+  "Nix Home Packages": {
+    "prefix": "homePackages",
+    "body": "home.packages = with pkgs; [\n  $0\n];",
+    "description": "Install packages for Home-Manager"
+  },
+  "Nix Imports": {
+    "prefix": "imports",
+    "body": "imports = [ ${1:./module.nix} ];\n$0",
+    "description": "Pull other modules into this one"
+  },
+  "Nix Derivation": {
+    "prefix": "mkDerivation",
+    "body": "stdenv.mkDerivation {\n  pname = \"${1:name}\";\n  version = \"${2:0.1.0}\";\n  src = ${3:./.};\n  nativeBuildInputs = [ ${4} ];\n  buildInputs = [ ${5} ];\n  $0\n}",
+    "description": "Package build recipe (stdenv.mkDerivation)"
+  },
+  "Nix callPackage": {
+    "prefix": "callPackage",
+    "body": "callPackage ${1:./.} { $0 }",
+    "description": "Call a package function with automatic arguments"
+  },
+  "Nix mkShell": {
+    "prefix": "mkShell",
+    "body": "pkgs.mkShell {\n  packages = [\n    $0\n  ];\n}",
+    "description": "Development shell (pkgs.mkShell)"
+  },
+  "Nix writeShellApplication": {
+    "prefix": "writeShellApplication",
+    "body": "pkgs.writeShellApplication {\n  name = \"${1:name}\";\n  runtimeInputs = [ ${2:pkgs.hello} ];\n  text = ''\n    $0\n  '';\n}",
+    "description": "Ship a shell script as a package"
+  },
+  "Nix Shebang": {
+    "prefix": "nix-shell",
+    "body": "#!/usr/bin/env nix-shell\n#!nix-shell -i ${1:bash} -p ${2:cowsay}\n$0",
+    "description": "#! nix-shell header for a self-contained script"
+  },
+  "Nix Flake": {
+    "prefix": "flake",
+    "body": "{\n  description = \"${1:A Nix flake}\";\n\n  inputs = {\n    nixpkgs.url = \"github:NixOS/nixpkgs/nixos-unstable\";\n    $2\n  };\n\n  outputs = { self, nixpkgs }:\n    let\n      systems = [ \"x86_64-linux\" \"aarch64-linux\" ];\n      forAllSystems = nixpkgs.lib.genAttrs systems;\n    in\n    {\n      packages = forAllSystems (system:\n        let\n          pkgs = nixpkgs.legacyPackages.\\${system};\n        in\n        {\n          default = pkgs.hello;\n          $0\n        });\n    };\n}",
+    "description": "flake.nix skeleton with per-system packages"
+  },
+  "Nix Flake Dev Shell": {
+    "prefix": "devShell",
+    "body": "devShells.${1:x86_64-linux}.default = pkgs.mkShell {\n  packages = [\n    ${2:pkgs.hello}\n  ];\n  $0\n};",
+    "description": "devShells entry inside a flake's outputs (pkgs in scope)"
+  }
+}
