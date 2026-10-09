@@ -29,8 +29,6 @@ const TOOLS: &[(&str, &str)] = &[
     ("--nixfmt", "nixfmt"),
     ("--alejandra", "alejandra"),
 ];
-const LINTER_NAMES: &[&str] = &["statix", "deadnix"];
-
 /// Formatters preferred for language-server formatting, best first.
 const FORMATTER_CANDIDATES: &[&str] = &["nixfmt", "alejandra"];
 
@@ -57,7 +55,7 @@ impl NixLinters {
             .and_then(|(_, candidates)| Self::find(worktree, candidates))
     }
 
-    fn bridge_command(&self, id: &LanguageServerId, worktree: &Worktree) -> Result<Command> {
+    fn bridge_command(&self, _id: &LanguageServerId, worktree: &Worktree) -> Result<Command> {
         let python = Self::find(worktree, PYTHON_CANDIDATES).ok_or_else(|| {
             "python3 is required to run the nix-lint bridge. Install Python 3 and make sure \
              it is on $PATH."
@@ -69,26 +67,16 @@ impl NixLinters {
         // Pin the bridge to whichever tools this machine actually has.
         // Passing paths explicitly means tools installed outside $PATH in
         // the extension host still work.
-        let mut found_linter = false;
+        //
+        // A missing tool is not reported as an installation failure: the
+        // bridge still starts and lints/formats with whatever subset is
+        // present, so flagging it would show a failure for a server that is
+        // working. The WIT API has no warning-level status for this case.
         for (flag, name) in TOOLS {
             if let Some(path) = worktree.which(*name) {
-                if LINTER_NAMES.contains(name) {
-                    found_linter = true;
-                }
                 args.push(flag.to_string());
                 args.push(path);
             }
-        }
-
-        if !found_linter {
-            zed::set_language_server_installation_status(
-                id,
-                &zed::LanguageServerInstallationStatus::Failed(
-                    "no Nix linter found; install statix or deadnix \
-                     (e.g. `nix profile install nixpkgs#statix nixpkgs#deadnix`)"
-                        .to_string(),
-                ),
-            );
         }
 
         Ok(Command {

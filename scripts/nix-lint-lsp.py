@@ -32,12 +32,19 @@ ALEJANDRA = None
 
 documents = {}
 shutdown_requested = False
+# Whether the client said it will call codeAction/resolve. Clients that
+# support it get edits computed on demand; the rest need them up front.
+resolve_supported = False
+
+LINT_DEBOUNCE_SECONDS = 0.3
+# Each debounced lint spawns statix and deadnix, so a burst of edits across
+# many open files could otherwise flood the machine with processes.
+LINT_CONCURRENCY = 2
 
 send_lock = threading.Lock()
 lint_lock = threading.Lock()
-lint_timer = None
-
-LINT_DEBOUNCE_SECONDS = 0.3
+lint_timers = {}
+lint_slots = threading.Semaphore(LINT_CONCURRENCY)
 
 
 # ── JSON-RPC plumbing ─────────────────────────────────────────────────
@@ -177,20 +184,42 @@ def run_deadnix(text):
 
 
 def lint(uri, text):
-    diagnostics = run_statix(text) + run_deadnix(text)
+    # Bound how many documents are linted at once: the semaphore is held for
+    # the whole run so a burst of timers queues instead of piling up
+    # statix/deadnix processes.
+    with lint_slots:
+        diagnostics = run_statix(text) + run_deadnix(text)
+    # Linting takes long enough that the buffer can move on (a didSave, or a
+    # newer keystroke's lint) before we get here. Publishing then would replace
+    # correct diagnostics with stale ones, so drop the result instead.
+    if documents.get(uri) != text:
+        return
     diagnostics.sort(key=lambda d: (d["range"]["start"]["line"], d["range"]["start"]["character"]))
     publish(uri, diagnostics)
 
 
 def schedule_lint(uri, text):
-    """Debounced linting, so fast typing doesn't spawn tools per keystroke."""
-    global lint_timer
+    """Debounced linting, so fast typing doesn't spawn tools per keystroke.
+
+    Timers are keyed by URI: editing one file must not cancel a pending lint
+    for another.
+    """
     with lint_lock:
-        if lint_timer is not None:
-            lint_timer.cancel()
-        lint_timer = threading.Timer(LINT_DEBOUNCE_SECONDS, lint, args=(uri, text))
-        lint_timer.daemon = True
-        lint_timer.start()
+        pending = lint_timers.pop(uri, None)
+        if pending is not None:
+            pending.cancel()
+        timer = threading.Timer(LINT_DEBOUNCE_SECONDS, lint, args=(uri, text))
+        timer.daemon = True
+        lint_timers[uri] = timer
+        timer.start()
+
+
+def cancel_lint(uri):
+    """Drop any pending debounced lint for `uri`."""
+    with lint_lock:
+        pending = lint_timers.pop(uri, None)
+        if pending is not None:
+            pending.cancel()
 
 
 # ── fixing / formatting ───────────────────────────────────────────────
@@ -238,27 +267,89 @@ def full_document_edit(text, new_text):
     return [{"range": range_(0, 0, len(text.splitlines()) + 1, 0), "newText": new_text}]
 
 
+# The fix-all code actions this server can offer, in display order.
+FIX_ACTIONS = (
+    ("statix", "Fix all statix issues"),
+    ("deadnix", "Remove dead code (deadnix)"),
+)
+
+
 # ── request handling ──────────────────────────────────────────────────
 
 
-def code_actions(uri, params):
-    text = documents.get(uri, "")
+def available_actions(uri):
+    """The fix-all actions this server offers, without computing any edits."""
     actions = []
-    for kind, title in (("statix", "Fix all statix issues"), ("deadnix", "Remove dead code (deadnix)")):
+    for kind, title in FIX_ACTIONS:
         tool = STATIX if kind == "statix" else DEADNIX
         if not tool:
-            continue
-        fixed = fix_all(kind, text)
-        if fixed is None:
             continue
         actions.append(
             {
                 "title": title,
                 "kind": f"source.fixAll.{kind}",
-                "edit": {"changes": {uri: full_document_edit(text, fixed)}},
+                "data": {"uri": uri},
             }
         )
     return actions
+
+
+def kind_matches(action_kind, requested):
+    """Does `action_kind` satisfy a requested `CodeActionKind`?
+
+    Kinds are hierarchical, so a request for `source` or `source.fixAll`
+    covers the actions nested under it, not just an exact string match.
+    """
+    return action_kind == requested or action_kind.startswith(requested + ".")
+
+
+def with_edit(action, uri):
+    """Run the action's tool and attach the resulting full-document edit.
+
+    Returns None when the tool is unavailable or found nothing to fix, which
+    is how an action is filtered out of the list.
+    """
+    kind = action["kind"].rsplit(".", 1)[-1]
+    fixed = fix_all(kind, documents.get(uri, ""))
+    if fixed is None:
+        return None
+    action["edit"] = {"changes": {uri: full_document_edit(documents.get(uri, ""), fixed)}}
+    return action
+
+
+def code_actions(uri, params):
+    """Offer fix-all actions for `uri`.
+
+    Running a tool costs a subprocess, and clients ask for code actions on
+    every cursor move, so edits are computed lazily and `codeAction/resolve`
+    fills them in. Clients that cannot resolve edits must get them up front,
+    otherwise the action does nothing when it is picked.
+    """
+    actions = available_actions(uri)
+
+    only = (params.get("context") or {}).get("only") or []
+    if only:
+        actions = [a for a in actions if any(kind_matches(a["kind"], k) for k in only)]
+
+    if not resolve_supported:
+        actions = [a for a in (with_edit(a, uri) for a in actions) if a is not None]
+
+    return actions
+
+
+def resolve_code_action(action):
+    """Fill in the edit for an action returned without one."""
+    if "edit" in action:
+        return action
+    uri = (action.get("data") or {}).get("uri")
+    kind = action.get("kind", "").rsplit(".", 1)[-1]
+    if uri is None or kind not in ("statix", "deadnix"):
+        return action
+    text = documents.get(uri, "")
+    fixed = fix_all(kind, text)
+    if fixed is not None:
+        action["edit"] = {"changes": {uri: full_document_edit(text, fixed)}}
+    return action
 
 
 def handle(message):
@@ -268,13 +359,28 @@ def handle(message):
     request_id = message.get("id")
 
     if method == "initialize":
+        global resolve_supported
+        code_action = ((params.get("capabilities") or {}).get("textDocument") or {}).get(
+            "codeAction", {}
+        )
+        resolve_support = code_action.get("resolveSupport") or {}
+        # Deferring is only safe when the client can both resolve the `edit`
+        # property and round-trip our `data` back to us; `resolveSupport` only
+        # guarantees the properties it lists, so a client may resolve `command`
+        # without `edit`, and it drops `data` unless `dataSupport` is set.
+        resolve_supported = "edit" in (resolve_support.get("properties") or []) and bool(
+            code_action.get("dataSupport")
+        )
         reply(
             request_id,
             {
                 "capabilities": {
                     "textDocumentSync": {"openClose": True, "change": 1, "save": True},
                     "documentFormattingProvider": bool(NIXFMT or ALEJANDRA),
-                    "codeActionProvider": {"codeActionKinds": ["source.fixAll.statix", "source.fixAll.deadnix"]},
+                    "codeActionProvider": {
+                        "codeActionKinds": [f"source.fixAll.{kind}" for kind, _ in FIX_ACTIONS],
+                        "resolveProvider": resolve_supported,
+                    },
                 },
                 "serverInfo": {"name": "nix-lint", "version": "0.3.0"},
             },
@@ -298,6 +404,7 @@ def handle(message):
             lint(uri, documents[uri])
     elif method == "textDocument/didClose":
         uri = params["textDocument"]["uri"]
+        cancel_lint(uri)
         documents.pop(uri, None)
         publish(uri, [])
     elif method == "textDocument/formatting":
@@ -306,7 +413,10 @@ def handle(message):
         fixed = format_text(text)
         reply(request_id, full_document_edit(text, fixed) if fixed is not None else None)
     elif method == "textDocument/codeAction":
-        reply(request_id, code_actions(params["textDocument"]["uri"], params))
+        uri = params["textDocument"]["uri"]
+        reply(request_id, code_actions(uri, params))
+    elif method == "codeAction/resolve":
+        reply(request_id, resolve_code_action(params))
     elif method == "shutdown":
         shutdown_requested = True
         reply(request_id, None)
