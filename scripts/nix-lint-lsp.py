@@ -198,8 +198,12 @@ def lint(uri, text):
     publish(uri, diagnostics)
 
 
-def schedule_lint(uri, text):
-    """Debounced linting, so fast typing doesn't spawn tools per keystroke.
+def schedule_lint(uri, text, delay=LINT_DEBOUNCE_SECONDS):
+    """Schedule a lint of `text` for `uri` after `delay` seconds.
+
+    Debounce so fast typing doesn't spawn tools per keystroke. `delay=0`
+    runs as soon as a slot frees up — used for saves, where the text is
+    final but the JSON-RPC loop must still not block on subprocesses.
 
     Timers are keyed by URI: editing one file must not cancel a pending lint
     for another.
@@ -208,7 +212,7 @@ def schedule_lint(uri, text):
         pending = lint_timers.pop(uri, None)
         if pending is not None:
             pending.cancel()
-        timer = threading.Timer(LINT_DEBOUNCE_SECONDS, lint, args=(uri, text))
+        timer = threading.Timer(delay, lint, args=(uri, text))
         timer.daemon = True
         lint_timers[uri] = timer
         timer.start()
@@ -401,7 +405,10 @@ def handle(message):
     elif method == "textDocument/didSave":
         uri = params["textDocument"]["uri"]
         if uri in documents:
-            lint(uri, documents[uri])
+            # The text is final on save, but statix/deadnix are subprocesses:
+            # run through the same background machinery so the JSON-RPC read
+            # loop keeps serving requests meanwhile.
+            schedule_lint(uri, documents[uri], delay=0)
     elif method == "textDocument/didClose":
         uri = params["textDocument"]["uri"]
         cancel_lint(uri)
