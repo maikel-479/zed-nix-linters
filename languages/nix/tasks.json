@@ -1,0 +1,11 @@
+[
+  {
+    "label": "nix flake check",
+    "command": "nix",
+    "args": ["flake", "check"],
+    "tags": ["nix-check"],
+    "reveal": "always",
+    "save": "current",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  }
+]
