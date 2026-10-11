@@ -22,11 +22,16 @@ Visual check by human still open (see below).
 - [x] #29: fix brace coloring in nested interpolation (`"${a b}"`
       case). Helix renders it correctly with the same grammar rev, so
       the fix is in our queries, not the parser.
-- [ ] HUMAN CHECK in Zed: open /tmp/opencode/nixq/repro29.nix — the
-      `${` and `}` of `"${a b}"` must match; open
-      /tmp/opencode/nixq/repro56.nix — the `''` before `$greeting`
-      and `${escaped}` must render as escape, distinct from the
-      green `${name}` interpolation above them.
+- [x] HUMAN CHECK in Zed (2026-10-11 screenshots):
+      - repro56: `''` escapes render distinct from `${name}` — DONE.
+      - repro29: Ayu can't show special-vs-bracket apart, so used a
+        temporary @number probe instead: `}` turned purple, proving
+        the interpolation rule paints the closer and queries reload
+        live through the dev-extension symlink. Probe reverted.
+      - Incidental finding: after `rebuild dev extension` Zed stopped
+        all three servers and never reattached them (verified via
+        pgrep + logs), which is why a deleted `}` showed nothing.
+        Documented in README; fix is close/reopen tabs.
 
 ## 3. Runnable flake tasks (issue #26)
 - [ ] Ship `languages/nix/runnables.scm` exposing at least
