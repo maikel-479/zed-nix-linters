@@ -13,15 +13,20 @@ Items are ordered smallest-first. Check off as merged.
       `wsl.extraBin` coreutils workaround from the issue thread.
 
 ## 2. Highlighting fixes (issues #56, #29)
-- [ ] #56: style `${…}` interpolation delimiters distinctly from `$var`
+Status: queries changed, engine-verified, Zed loads them clean.
+Visual check by human still open (see below).
+- [x] #56: style `${…}` interpolation delimiters distinctly from `$var`
       bash variables in injected shells; highlight `''` escape as an
       escape char. Files: `languages/nix/highlights.scm`
       (+ `injections.scm` if needed).
-- [ ] #29: fix brace coloring in nested interpolation (`"${a b}"`
+- [x] #29: fix brace coloring in nested interpolation (`"${a b}"`
       case). Helix renders it correctly with the same grammar rev, so
       the fix is in our queries, not the parser.
-- [ ] Verify both against the issue repro snippets in Zed
-      (`zed: rebuild dev extension`, reopen test file).
+- [ ] HUMAN CHECK in Zed: open /tmp/opencode/nixq/repro29.nix — the
+      `${` and `}` of `"${a b}"` must match; open
+      /tmp/opencode/nixq/repro56.nix — the `''` before `$greeting`
+      and `${escaped}` must render as escape, distinct from the
+      green `${name}` interpolation above them.
 
 ## 3. Runnable flake tasks (issue #26)
 - [ ] Ship `languages/nix/runnables.scm` exposing at least
