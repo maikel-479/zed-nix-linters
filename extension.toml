@@ -1,6 +1,6 @@
 id = "nix-linters"
 name = "Nix Linters"
-version = "0.3.0"
+version = "0.3.1"
 schema_version = 1
 authors = ["maikel"]
 description = "Nix language support with LSP, linting (statix, deadnix) and formatting (nixfmt, alejandra)."

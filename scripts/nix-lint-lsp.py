@@ -386,7 +386,7 @@ def handle(message):
                         "resolveProvider": resolve_supported,
                     },
                 },
-                "serverInfo": {"name": "nix-lint", "version": "0.3.0"},
+                "serverInfo": {"name": "nix-lint", "version": "0.3.1"},
             },
         )
     elif method == "initialized":

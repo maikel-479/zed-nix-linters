@@ -119,6 +119,12 @@ Formatting already works on demand (`editor: format`) either way, since the defa
 
 **Tuning the linters.** statix reads a [`statix.toml`](https://github.com/oppiliappan/statix#configuration) from the project root, so drop one in to enable or silence lints. deadnix runs with its defaults (unused bindings and arguments; names starting with `_` are left alone).
 
+**Environment and custom binaries.** The language servers and the lint bridge all inherit your project's shell environment, so direnv and nix-shell variables (like `NIX_PATH`) reach them. If a server lives somewhere unusual, point Zed at it directly — this overrides the `$PATH` lookup:
+
+```json
+{ "lsp": { "nixd": { "binary": { "path": "/nix/store/…/bin/nixd" } } } }
+```
+
 ## Troubleshooting
 
 - **Both `nil` and `nixd` are running.** The manifest opt-in for `nil` (`opt_in_languages`, [documented here](https://zed.dev/docs/extensions/languages#opt-in-language-servers)) shipped in Zed 1.24. On older stable builds it's ignored, so `nil` starts alongside `nixd` until Zed auto-updates. Until then, add `"language_servers": ["nixd", "nix-lint", "!nil"]` under `languages.Nix`.
