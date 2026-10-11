@@ -42,6 +42,12 @@
 ; escape sequences
 (escape_sequence) @string.escape
 
+; `''$` in indented strings: the `$` is escaped, so what follows is literal
+; text, not interpolation. Without this the injected language (e.g. bash in
+; `writeShellApplication { text = ...; }`) highlights `$foo` as a variable
+; with no hint that the `$` is escaped (see #56).
+(dollar_escape) @string.escape
+
 ; delimiters
 [
   "."
@@ -50,15 +56,19 @@
   ","
 ] @punctuation.delimiter
 
-; brackets
-[
-  "("
-  ")"
-  "["
-  "]"
-  "{"
-  "}"
-] @punctuation.bracket
+; brackets. The interpolation rule below also matches `}` (same token), so
+; the interpolation's closing brace is excluded here — otherwise it carries
+; two captures and renders a different color than its `${` (see #29).
+(
+  [
+    "("
+    ")"
+    "["
+    "]"
+    "{"
+    "}"
+  ] @punctuation.bracket
+  (#not-has-parent? @punctuation.bracket "interpolation"))
 
 ; `?` in `{ x ? y }:`, used to set defaults for named function arguments
 (formal
