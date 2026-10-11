@@ -37,14 +37,8 @@ Type a prefix in a `.nix` file and accept the suggestion to expand it. Placehold
 
 | Prefix | Expands to |
 |---|---|
-| `let` | `let ... in` with one binding |
 | `lambda` | `arg: …` anonymous function |
 | `fn` (or `nix-func`) | `{ args }: …` attribute-set function |
-| `if` | `if … then … else …` |
-| `with` | `with set; …` |
-| `import` | `import ./path` |
-| `inherit` | `inherit name;` |
-| `rec` | recursive attribute set |
 | `mstr` | `'' … ''` multi-line string |
 
 **NixOS / Home-Manager modules**
