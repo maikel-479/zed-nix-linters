@@ -35,10 +35,22 @@ Type a prefix in a `.nix` file and accept the suggestion to expand it. Placehold
 
 **Everyday expressions**
 
+Some of these (`let`, `if`, `with`, `import`, `inherit`, `rec`) overlap with keyword completions from nixd/nil — both entries appear in the suggestion menu. The snippet version expands to a multi-line scaffold with tab-stops; the LSP version is a bare keyword. To make the richer snippet version the default pick, add this to your settings:
+
+```json
+{ "snippet_sort_order": "top" }
+```
+
 | Prefix | Expands to |
 |---|---|
+| `let` | `let ... in` with one binding |
 | `lambda` | `arg: …` anonymous function |
 | `fn` (or `nix-func`) | `{ args }: …` attribute-set function |
+| `if` | `if … then … else …` |
+| `with` | `with set; …` |
+| `import` | `import ./path` |
+| `inherit` | `inherit name;` |
+| `rec` | recursive attribute set |
 | `mstr` | `'' … ''` multi-line string |
 
 **NixOS / Home-Manager modules**

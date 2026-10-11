@@ -1,4 +1,9 @@
 {
+  "Nix Let": {
+    "prefix": "let",
+    "body": "let\n  ${1:name} = ${2:value};\nin\n$0",
+    "description": "let ... in expression"
+  },
   "Nix Lambda": {
     "prefix": "lambda",
     "body": "${1:arg}: $0",
@@ -8,6 +13,31 @@
     "prefix": ["fn", "nix-func"],
     "body": "{ ${1:args} }:\n$0",
     "description": "Function taking an attribute set of arguments"
+  },
+  "Nix If Then Else": {
+    "prefix": "if",
+    "body": "if ${1:condition} then ${2:value} else ${3:value}",
+    "description": "Conditional expression"
+  },
+  "Nix With": {
+    "prefix": "with",
+    "body": "with ${1:set}; $0",
+    "description": "Bring an attribute set into scope"
+  },
+  "Nix Import": {
+    "prefix": "import",
+    "body": "import ${1:./path}",
+    "description": "Import and evaluate a Nix file"
+  },
+  "Nix Inherit": {
+    "prefix": "inherit",
+    "body": "inherit ${1:name}; $0",
+    "description": "Shorthand for name = name;"
+  },
+  "Nix Attribute Set": {
+    "prefix": "rec",
+    "body": "rec {\n  $0\n}",
+    "description": "Recursive attribute set"
   },
   "Nix Multiline String": {
     "prefix": "mstr",
