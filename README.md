@@ -133,7 +133,7 @@ Formatting already works on demand (`editor: format`) either way, since the defa
 - **"Some flake inputs are not available"** — that's nil telling you it can't resolve your flake's inputs from where it's evaluating. Either switch to nixd (the default) with your flake's nixpkgs wired up as described under Configuration above, or give nil the same context through `lsp.nil.settings`.
 - **Servers never start over SSH / WSL remote.** Zed's remote server needs basic Unix tools on the remote side (the stock issue thread traces this to missing coreutils — on NixOS-WSL the fix is adding them via `wsl.extraBin`). On top of that, *this* extension needs `python3` plus your Nix tools installed on the remote machine itself; your laptop's `$PATH` doesn't travel with the connection.
 - **Syntax highlighting or snippets not showing up** — run **zed: rebuild dev extension**.
-- **No diagnostics / servers silent after `rebuild dev extension`.** Rebuilding stops the running servers, and Zed doesn't always reattach them to already-open buffers. Close and reopen your `.nix` tabs (or restart Zed) to bring them back.
+- **No diagnostics / servers silent after `rebuild dev extension`.** Rebuilding stops the running servers, and Zed doesn't reliably reattach them to already-open buffers — not even after closing and reopening tabs. **Restart Zed** to bring them back. (Symptom: a real syntax error with "No problems in workspace", as confirmed 2026-10-11 with all three servers verified down via `pgrep`.)
 
 ## How it works
 
