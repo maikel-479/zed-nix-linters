@@ -130,6 +130,8 @@ Formatting already works on demand (`editor: format`) either way, since the defa
 - **Both `nil` and `nixd` are running.** The manifest opt-in for `nil` (`opt_in_languages`, [documented here](https://zed.dev/docs/extensions/languages#opt-in-language-servers)) shipped in Zed 1.24. On older stable builds it's ignored, so `nil` starts alongside `nixd` until Zed auto-updates. Until then, add `"language_servers": ["nixd", "nix-lint", "!nil"]` under `languages.Nix`.
 - **"no Nix language server found"** — install one: `nix profile install nixpkgs#nixd` (or `#nil`).
 - **"no Nix linter found"** — `nix profile install nixpkgs#statix nixpkgs#deadnix`.
+- **"Some flake inputs are not available"** — that's nil telling you it can't resolve your flake's inputs from where it's evaluating. Either switch to nixd (the default) with your flake's nixpkgs wired up as described under Configuration above, or give nil the same context through `lsp.nil.settings`.
+- **Servers never start over SSH / WSL remote.** Zed's remote server needs basic Unix tools on the remote side (the stock issue thread traces this to missing coreutils — on NixOS-WSL the fix is adding them via `wsl.extraBin`). On top of that, *this* extension needs `python3` plus your Nix tools installed on the remote machine itself; your laptop's `$PATH` doesn't travel with the connection.
 - **Syntax highlighting or snippets not showing up** — run **zed: rebuild dev extension**.
 
 ## How it works
