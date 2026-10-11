@@ -134,6 +134,7 @@ Formatting already works on demand (`editor: format`) either way, since the defa
 - **Servers never start over SSH / WSL remote.** Zed's remote server needs basic Unix tools on the remote side (the stock issue thread traces this to missing coreutils — on NixOS-WSL the fix is adding them via `wsl.extraBin`). On top of that, *this* extension needs `python3` plus your Nix tools installed on the remote machine itself; your laptop's `$PATH` doesn't travel with the connection.
 - **Syntax highlighting or snippets not showing up** — run **zed: rebuild dev extension**.
 - **No diagnostics / servers silent after `rebuild dev extension`.** Rebuilding stops the running servers, and Zed doesn't reliably reattach them to already-open buffers — not even after closing and reopening tabs. **Restart Zed** to bring them back. (Symptom: a real syntax error with "No problems in workspace", as confirmed 2026-10-11 with all three servers verified down via `pgrep`.)
+- **Undefined variable under `with` is not flagged.** Verified 2026-10-11: in `with a; [x y z]`, no server reports the unbound `x` — nil deliberately skips name checks inside `with` bodies (anything could come from the expression), and nixd needs a working eval for it. In plain scope nil *does* report `Undefined name`. If you want the check, avoid `with` (`[a.x a.y a.z]` flags instantly) — which is also what the nixpkgs style guide recommends.
 
 ## How it works
 
